@@ -242,25 +242,14 @@ sube la parte pero no puede leer el header `ETag`, y sin `ETag` no hay `ack` ni 
 
 En entornos reales estas claves vienen del entorno (`DB_URL`, `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET`, `UPLOAD_MAX_SIZE_BYTES`, …) sin defaults: arranque fail-fast si faltan.
 
-## ¿Dónde entra Kafka?
+## Demo
 
-No en la subida. El navegador ya habla directo con el almacenamiento y el API solo lleva el libro:
-la parte síncrona son llamadas JSON de milisegundos.
 
-La pregunta empieza en `COMPLETED`. Ahí el objeto existe, la petición HTTP terminó, y el enum
-`UploadStatus` promete `COMPLETED → PROCESSING → READY` sin que nadie mueva esas dos flechas. Ese
-hueco se ve en la consola web: el estado deja de avanzar y las consultas siguen devolviendo lo mismo.
 
-| Opción | Cuándo alcanza |
-|---|---|
-| Nada | no hay post-proceso. El upload ya terminó. |
-| `@Async` / `@TransactionalEventListener` | una tarea corta que puedes perder si el proceso reinicia. |
-| Outbox + tabla de jobs | sobrevive reinicios y da reintentos con la BD que ya tienes; un solo consumidor lógico. |
-| **Kafka** | un `upload.completed` con varios consumidores independientes (transcodificar, miniaturas, antivirus, avisar) que escalan y fallan por separado, con reintentos y replay. |
+<img width="1920" height="3211" alt="screencapture-localhost-5173-2026-09-24-09_47_19" src="https://github.com/user-attachments/assets/8624a53a-089f-4fc1-9790-550989f76364" />
+<img width="2067" height="951" alt="screencapture-localhost-9001-browser-video-uploads-uploads-e3222887-b578-4455-bb2f-efc4dd498860-2026-09-24-09_47_54" src="https://github.com/user-attachments/assets/034aa5a4-7744-4555-b996-0ba2f8ccf90c" />
+<img width="1920" height="2825" alt="screencapture-localhost-5173-2026-09-24-09_46_45" src="https://github.com/user-attachments/assets/d4594a16-971a-4425-8c4c-081adc557fe7" />
 
-Kafka resuelve fan-out durable, no "hacer el upload asíncrono": eso ya lo es.
-
-## Próximos pasos
 
 - Autenticación JWT (reemplazar `HeaderUserAuthenticationFilter`).
 - Publicar `upload.completed` en Kafka y un consumidor que mueva `COMPLETED → PROCESSING → READY`.
