@@ -1,0 +1,10 @@
+com\videoflow\upload\application\service\GenerateDownloadUrlServiceTest.class
+com\videoflow\upload\application\service\GeneratePresignedUrlsServiceTest.class
+com\videoflow\upload\integration\UploadFlowIntegrationTest$HttpHeadersWithKey.class
+com\videoflow\upload\application\service\CreateUploadServiceTest.class
+com\videoflow\upload\application\service\UploadAccessGuardTest.class
+com\videoflow\upload\domain\model\ObjectKeyTest.class
+com\videoflow\upload\domain\model\UploadStatusTransitionTest.class
+com\videoflow\upload\integration\IntegrationTestBase.class
+com\videoflow\upload\integration\UploadFlowIntegrationTest.class
+com\videoflow\upload\application\service\CompleteUploadServiceTest.class

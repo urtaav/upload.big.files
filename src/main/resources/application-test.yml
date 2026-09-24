@@ -1,0 +1,47 @@
+# =============================================================================
+# upload-api - test profile
+# -----------------------------------------------------------------------------
+# Used by integration tests. Database and object storage are provided by
+# Testcontainers and their connection properties are injected at runtime via
+# @DynamicPropertySource, which overrides the stubs below.
+# =============================================================================
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/test
+    username: test
+    password: test
+
+  jpa:
+    hibernate:
+      # Fresh schema per test run against the Testcontainers PostgreSQL.
+      ddl-auto: create-drop
+
+  kafka:
+    bootstrap-servers: localhost:9092
+
+storage:
+  s3:
+    region: us-east-1
+    path-style-access: true
+    endpoint: http://localhost:9000
+    access-key: minioadmin
+    secret-key: minioadmin
+    bucket: video-uploads
+
+app:
+  upload:
+    max-size-bytes: 5368709120      # 5 GiB
+    part-size-bytes: 5242880        # 5 MiB (S3 minimum, keeps tests light)
+    allowed-content-types: video/mp4,video/quicktime
+    presigned-url-ttl: PT5M
+    session-ttl: PT1H
+
+  security:
+    # No default: integration tests always send the X-User-Id header.
+    default-user-id:
+
+logging:
+  level:
+    root: WARN
+    com.videoflow: INFO

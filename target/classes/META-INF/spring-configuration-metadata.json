@@ -1,0 +1,108 @@
+{
+  "groups": [
+    {
+      "name": "app.cors",
+      "type": "com.videoflow.upload.infrastructure.security.CorsProperties",
+      "sourceType": "com.videoflow.upload.infrastructure.security.CorsProperties"
+    },
+    {
+      "name": "app.security",
+      "type": "com.videoflow.upload.infrastructure.security.SecurityProperties",
+      "sourceType": "com.videoflow.upload.infrastructure.security.SecurityProperties"
+    },
+    {
+      "name": "app.upload",
+      "type": "com.videoflow.upload.application.config.UploadSettings",
+      "sourceType": "com.videoflow.upload.application.config.UploadSettings"
+    },
+    {
+      "name": "storage.s3",
+      "type": "com.videoflow.upload.infrastructure.storage.S3StorageProperties",
+      "sourceType": "com.videoflow.upload.infrastructure.storage.S3StorageProperties"
+    }
+  ],
+  "properties": [
+    {
+      "name": "app.cors.allowed-origins",
+      "type": "java.util.List<java.lang.String>",
+      "sourceType": "com.videoflow.upload.infrastructure.security.CorsProperties"
+    },
+    {
+      "name": "app.security.default-user-id",
+      "type": "java.lang.String",
+      "sourceType": "com.videoflow.upload.infrastructure.security.SecurityProperties"
+    },
+    {
+      "name": "app.security.header-name",
+      "type": "java.lang.String",
+      "sourceType": "com.videoflow.upload.infrastructure.security.SecurityProperties"
+    },
+    {
+      "name": "app.upload.allowed-content-types",
+      "type": "java.util.List<java.lang.String>",
+      "description": "allowlist of accepted MIME types",
+      "sourceType": "com.videoflow.upload.application.config.UploadSettings"
+    },
+    {
+      "name": "app.upload.max-size-bytes",
+      "type": "java.lang.Long",
+      "description": "absolute maximum accepted file size in bytes",
+      "sourceType": "com.videoflow.upload.application.config.UploadSettings",
+      "defaultValue": 0
+    },
+    {
+      "name": "app.upload.part-size-bytes",
+      "type": "java.lang.Integer",
+      "description": "fixed part size in bytes",
+      "sourceType": "com.videoflow.upload.application.config.UploadSettings",
+      "defaultValue": 0
+    },
+    {
+      "name": "app.upload.presigned-url-ttl",
+      "type": "java.time.Duration",
+      "description": "TTL of each presigned part URL",
+      "sourceType": "com.videoflow.upload.application.config.UploadSettings"
+    },
+    {
+      "name": "app.upload.session-ttl",
+      "type": "java.time.Duration",
+      "description": "how long an upload session stays open before EXPIRED",
+      "sourceType": "com.videoflow.upload.application.config.UploadSettings"
+    },
+    {
+      "name": "storage.s3.access-key",
+      "type": "java.lang.String",
+      "sourceType": "com.videoflow.upload.infrastructure.storage.S3StorageProperties"
+    },
+    {
+      "name": "storage.s3.bucket",
+      "type": "java.lang.String",
+      "sourceType": "com.videoflow.upload.infrastructure.storage.S3StorageProperties"
+    },
+    {
+      "name": "storage.s3.endpoint",
+      "type": "java.lang.String",
+      "sourceType": "com.videoflow.upload.infrastructure.storage.S3StorageProperties"
+    },
+    {
+      "name": "storage.s3.path-style-access",
+      "type": "java.lang.Boolean",
+      "sourceType": "com.videoflow.upload.infrastructure.storage.S3StorageProperties",
+      "defaultValue": false
+    },
+    {
+      "name": "storage.s3.region",
+      "type": "java.lang.String",
+      "sourceType": "com.videoflow.upload.infrastructure.storage.S3StorageProperties"
+    },
+    {
+      "name": "storage.s3.secret-key",
+      "type": "java.lang.String",
+      "sourceType": "com.videoflow.upload.infrastructure.storage.S3StorageProperties"
+    }
+  ],
+  "hints": [],
+  "ignored": {
+    "properties": []
+  }
+}

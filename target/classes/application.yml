@@ -1,0 +1,129 @@
+# =============================================================================
+# upload-api - base configuration
+# -----------------------------------------------------------------------------
+# Required secrets/connections MUST come from the environment in any non-local
+# deployment. The base file provides NO defaults for credentials so the
+# application fails fast when they are missing.
+# =============================================================================
+
+spring:
+  application:
+    name: upload-api
+
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:20}
+      minimum-idle: ${DB_POOL_MIN_IDLE:5}
+      connection-timeout: 10000
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:none}
+    show-sql: false
+    properties:
+      hibernate:
+        jdbc.time_zone: UTC
+
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: UTC
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api
+  shutdown: graceful
+  tomcat:
+    # Tuning for many concurrent clients holding part-upload HTTP connections.
+    max-connections: ${TOMCAT_MAX_CONNECTIONS:20000}
+    accept-count: ${TOMCAT_ACCEPT_COUNT:200}
+    max-threads: ${TOMCAT_MAX_THREADS:200}
+    min-spare-threads: ${TOMCAT_MIN_SPARE_THREADS:10}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,loggers
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+  tracing:
+    sampling:
+      probability: 1.0
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+logging:
+  level:
+    root: INFO
+  pattern:
+    # Structured-ish correlation: application,traceId,spanId
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
+
+# -----------------------------------------------------------------------------
+# Upload orchestration business rules
+# -----------------------------------------------------------------------------
+app:
+  upload:
+    # Absolute maximum file size accepted by the API (bytes). Default: 5 GiB.
+    max-size-bytes: ${UPLOAD_MAX_SIZE_BYTES}
+    # Fixed part size to slice the file (bytes). Default: 10 MiB.
+    part-size-bytes: ${UPLOAD_PART_SIZE_BYTES}
+    # Comma-separated allowlist of MIME types.
+    allowed-content-types: ${ALLOWED_CONTENT_TYPES}
+    # TTL of each presigned part URL (ISO-8601 duration). Default: 15 minutes.
+    presigned-url-ttl: ${PRESIGNED_URL_TTL}
+    # How long an upload session may stay open before EXPIRED (ISO-8601 duration).
+    session-ttl: ${UPLOAD_SESSION_TTL}
+
+  # Browser origins allowed to call the API (comma-separated). Empty by
+  # default: CORS stays disabled unless a deployment opts in.
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+
+  # Temporary identity mechanism until JWT is implemented. The user id is read
+  # from a header; JWT will replace the filter, the header never leaves the
+  # deploy pipeline in production.
+  security:
+    header-name: ${AUTH_USER_HEADER:X-User-Id}
+    default-user-id: ${AUTH_DEFAULT_USER_ID:}
+
+# -----------------------------------------------------------------------------
+# Object storage (S3-compatible: MinIO in dev, real S3 in prod)
+# -----------------------------------------------------------------------------
+storage:
+  s3:
+    endpoint: ${MINIO_ENDPOINT}
+    region: ${MINIO_REGION:us-east-1}
+    access-key: ${MINIO_ACCESS_KEY}
+    secret-key: ${MINIO_SECRET_KEY}
+    bucket: ${MINIO_BUCKET}
+    path-style-access: true
+
+# -----------------------------------------------------------------------------
+# OpenAPI / Swagger
+# -----------------------------------------------------------------------------
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html

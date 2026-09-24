@@ -1,0 +1,9 @@
+C:\Users\uriel.tapia\Documents\DEV\springboot\2026\upload-api\src\test\java\com\videoflow\upload\application\service\CompleteUploadServiceTest.java
+C:\Users\uriel.tapia\Documents\DEV\springboot\2026\upload-api\src\test\java\com\videoflow\upload\application\service\CreateUploadServiceTest.java
+C:\Users\uriel.tapia\Documents\DEV\springboot\2026\upload-api\src\test\java\com\videoflow\upload\application\service\GenerateDownloadUrlServiceTest.java
+C:\Users\uriel.tapia\Documents\DEV\springboot\2026\upload-api\src\test\java\com\videoflow\upload\application\service\GeneratePresignedUrlsServiceTest.java
+C:\Users\uriel.tapia\Documents\DEV\springboot\2026\upload-api\src\test\java\com\videoflow\upload\application\service\UploadAccessGuardTest.java
+C:\Users\uriel.tapia\Documents\DEV\springboot\2026\upload-api\src\test\java\com\videoflow\upload\domain\model\ObjectKeyTest.java
+C:\Users\uriel.tapia\Documents\DEV\springboot\2026\upload-api\src\test\java\com\videoflow\upload\domain\model\UploadStatusTransitionTest.java
+C:\Users\uriel.tapia\Documents\DEV\springboot\2026\upload-api\src\test\java\com\videoflow\upload\integration\IntegrationTestBase.java
+C:\Users\uriel.tapia\Documents\DEV\springboot\2026\upload-api\src\test\java\com\videoflow\upload\integration\UploadFlowIntegrationTest.java

@@ -1,0 +1,23 @@
+-------------------------------------------------------------------------------
+Test set: com.videoflow.upload.integration.UploadFlowIntegrationTest
+-------------------------------------------------------------------------------
+Tests run: 1, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 6.426 s <<< FAILURE! -- in com.videoflow.upload.integration.UploadFlowIntegrationTest
+com.videoflow.upload.integration.UploadFlowIntegrationTest -- Time elapsed: 6.426 s <<< ERROR!
+org.testcontainers.containers.ContainerFetchException: Can't get Docker image: RemoteDockerImage(imageName=minio/minio:RELEASE.2025-04-22T22-12-26Z, imagePullPolicy=DefaultPullPolicy(), imageNameSubstitutor=org.testcontainers.utility.ImageNameSubstitutor$LogWrappedImageNameSubstitutor@3002e397)
+	at org.testcontainers.containers.GenericContainer.getDockerImageName(GenericContainer.java:1364)
+	at org.testcontainers.containers.GenericContainer.doStart(GenericContainer.java:351)
+	at org.testcontainers.containers.GenericContainer.start(GenericContainer.java:322)
+	at org.testcontainers.junit.jupiter.TestcontainersExtension$StoreAdapter.start(TestcontainersExtension.java:276)
+	at org.testcontainers.junit.jupiter.TestcontainersExtension$StoreAdapter.access$200(TestcontainersExtension.java:263)
+	at org.testcontainers.junit.jupiter.TestcontainersExtension.lambda$startContainers$4(TestcontainersExtension.java:83)
+	at org.testcontainers.junit.jupiter.TestcontainersExtension.lambda$startContainers$5(TestcontainersExtension.java:83)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at org.testcontainers.junit.jupiter.TestcontainersExtension.startContainers(TestcontainersExtension.java:83)
+	at org.testcontainers.junit.jupiter.TestcontainersExtension.beforeAll(TestcontainersExtension.java:57)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: com.github.dockerjava.api.exception.NotFoundException: Status 404: {"message":"pull access denied for minio/minio, repository does not exist or may require 'docker login'"}
+
+	at org.testcontainers.shaded.com.github.dockerjava.core.DefaultInvocationBuilder.execute(DefaultInvocationBuilder.java:241)
+	at org.testcontainers.shaded.com.github.dockerjava.core.DefaultInvocationBuilder.lambda$executeAndStream$1(DefaultInvocationBuilder.java:269)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+

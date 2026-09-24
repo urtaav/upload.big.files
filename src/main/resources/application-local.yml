@@ -1,0 +1,53 @@
+# =============================================================================
+# upload-api - local development profile
+# -----------------------------------------------------------------------------
+# Defaults for local Docker Compose infrastructure (PostgreSQL + MinIO).
+# Never use this profile in production.
+# Activate with: mvn spring-boot:run -Dspring-boot.run.profiles=local
+# =============================================================================
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/upload
+    username: upload
+    password: upload
+
+  jpa:
+    hibernate:
+      # Local convenience only. Production uses migrations + 'validate'.
+      ddl-auto: update
+
+  kafka:
+    bootstrap-servers: localhost:9092
+
+storage:
+  s3:
+    endpoint: http://localhost:9000
+    region: us-east-1
+    access-key: minioadmin
+    secret-key: minioadmin
+    bucket: video-uploads
+    path-style-access: true
+
+app:
+  upload:
+    max-size-bytes: 5368709120      # 5 GiB
+    part-size-bytes: 10485760       # 10 MiB
+    # "*" accepts any type locally; production narrows this to a real allowlist.
+    allowed-content-types: "*"
+    presigned-url-ttl: PT15M
+    session-ttl: PT24H
+
+  cors:
+    # Vite dev server origins for the web client in /web.
+    allowed-origins:
+      - http://localhost:5173
+      - http://127.0.0.1:5173
+
+  security:
+    # Local convenience: requests without X-User-Id default to this user.
+    default-user-id: 00000000-0000-0000-0000-000000000001
+
+logging:
+  level:
+    com.videoflow: DEBUG

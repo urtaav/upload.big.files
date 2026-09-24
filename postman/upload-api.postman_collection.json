@@ -1,0 +1,393 @@
+{
+  "info": {
+    "_postman_id": "3f7e2b01-8a4c-4e6d-a1b2-upload-api",
+    "name": "upload-api (flujo completo)",
+    "description": "Orquestación de subida multipart directa a MinIO/S3. Requiere la API arriba (perfil local) y Docker con infra. Ejecutar en orden: 01 -> 02 -> 03 -> 04a/04b -> 05a/05b -> 06 -> 07 -> 08 -> 09 -> 10 -> 11 -> 12. Los IDs, URLs de parte y ETags se capturan entre requests.\n\nSi algun PUT devuelve 403 'SignatureDoesNotMatch', usa cuerpo 'raw' de texto (sin archivo): Postman agrega headers que quedan sin firmar.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base-url", "value": "http://localhost:8080/api", "type": "string" },
+    { "key": "user-id", "value": "00000000-0000-0000-0000-000000000001", "type": "string" },
+    { "key": "other-user-id", "value": "99999999-9999-9999-9999-999999999999", "type": "string" },
+    { "key": "idempotency-key", "value": "postman-demo-001", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "01 - Crear sesión",
+      "request": {
+        "method": "POST",
+        "url": "{{base-url}}/v1/uploads",
+        "header": [
+          { "key": "X-User-Id", "value": "{{user-id}}", "type": "text" },
+          { "key": "Idempotency-Key", "value": "{{idempotency-key}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fileName\": \"clip.mp4\",\n  \"contentType\": \"video/mp4\",\n  \"size\": 15000000\n}",
+          "options": { "raw": { "language": "json" } }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "pm.collectionVariables.set('uploadId', j.uploadId);",
+              "pm.collectionVariables.set('totalParts', j.totalParts);",
+              "pm.test('→ 201 created', () => pm.expect(pm.response.code).to.eql(201));",
+              "pm.test('→ totalParts = 2 (25 MiB con partSize 10 MiB)', () => pm.expect(j.totalParts).to.eql(2));",
+              "console.log('uploadId:', j.uploadId);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Idempotencia (repetir la misma petición)",
+      "request": {
+        "method": "POST",
+        "url": "{{base-url}}/v1/uploads",
+        "header": [
+          { "key": "X-User-Id", "value": "{{user-id}}", "type": "text" },
+          { "key": "Idempotency-Key", "value": "{{idempotency-key}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fileName\": \"clip.mp4\",\n  \"contentType\": \"video/mp4\",\n  \"size\": 15000000\n}",
+          "options": { "raw": { "language": "json" } }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "pm.test('→ 200 (replay, no 201)', () => pm.expect(pm.response.code).to.eql(200));",
+              "pm.test('→ mismo uploadId', () => pm.expect(j.uploadId).to.eql(pm.collectionVariables.get('uploadId')));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Pedir presigned URLs (partes 1 y 2)",
+      "request": {
+        "method": "POST",
+        "url": "{{base-url}}/v1/uploads/{{uploadId}}/parts",
+        "header": [{ "key": "X-User-Id", "value": "{{user-id}}", "type": "text" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"partNumbers\": [1, 2]\n}",
+          "options": { "raw": { "language": "json" } }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "j.parts.forEach(p => pm.collectionVariables.set('uploadUrl' + p.partNumber, p.uploadUrl));",
+              "pm.test('→ 200 y 2 URLs', () => { pm.expect(pm.response.code).to.eql(200); pm.expect(j.parts.length).to.eql(2); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04a - PUT parte 1 directo a MinIO",
+      "request": {
+        "method": "PUT",
+        "url": "{{uploadUrl1}}",
+        "description": "Sube los bytes de la parte 1 DIRECTAMENTE a MinIO con la URL presignada. No pasa por Spring. El ETag del response se captura solo.",
+        "header": [],
+        "body": { "mode": "raw", "raw": "P1_bytes_abcd" }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('→ PUT 200', () => pm.expect(pm.response.code).to.eql(200));",
+              "const etag = (pm.response.headers.get('ETag') || '').replace(/\"/g, '');",
+              "pm.collectionVariables.set('etag1', etag);",
+              "console.log('etag1:', etag);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04b - PUT parte 2 directo a MinIO",
+      "request": {
+        "method": "PUT",
+        "url": "{{uploadUrl2}}",
+        "header": [],
+        "body": { "mode": "raw", "raw": "P2_bytes_abcd" }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('→ PUT 200', () => pm.expect(pm.response.code).to.eql(200));",
+              "const etag = (pm.response.headers.get('ETag') || '').replace(/\"/g, '');",
+              "pm.collectionVariables.set('etag2', etag);",
+              "console.log('etag2:', etag);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05a - Ack parte 1",
+      "request": {
+        "method": "POST",
+        "url": "{{base-url}}/v1/uploads/{{uploadId}}/parts/1/ack",
+        "header": [{ "key": "X-User-Id", "value": "{{user-id}}", "type": "text" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"etag\": \"{{etag1}}\",\n  \"size\": 10485760\n}",
+          "options": { "raw": { "language": "json" } }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "pm.test('→ 200, uploadedParts = 1', () => { pm.expect(pm.response.code).to.eql(200); pm.expect(j.uploadedParts).to.eql(1); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05b - Ack parte 2",
+      "request": {
+        "method": "POST",
+        "url": "{{base-url}}/v1/uploads/{{uploadId}}/parts/2/ack",
+        "header": [{ "key": "X-User-Id", "value": "{{user-id}}", "type": "text" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"etag\": \"{{etag2}}\",\n  \"size\": 4514240\n}",
+          "options": { "raw": { "language": "json" } }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "pm.test('→ 200, uploadedParts = 2', () => { pm.expect(pm.response.code).to.eql(200); pm.expect(j.uploadedParts).to.eql(2); });",
+              "pm.test('→ estado ahora UPLOADING', () => pm.expect(j.status).to.not.be.empty);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Completar upload",
+      "request": {
+        "method": "POST",
+        "url": "{{base-url}}/v1/uploads/{{uploadId}}/complete",
+        "header": [{ "key": "X-User-Id", "value": "{{user-id}}", "type": "text" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"parts\": [\n    { \"partNumber\": 1, \"etag\": \"{{etag1}}\" },\n    { \"partNumber\": 2, \"etag\": \"{{etag2}}\" }\n  ]\n}",
+          "options": { "raw": { "language": "json" } }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "pm.test('→ 200 y COMPLETED', () => { pm.expect(pm.response.code).to.eql(200); pm.expect(j.status).to.eql('COMPLETED'); });",
+              "pm.test('→ uploadedParts = 2', () => pm.expect(j.uploadedParts).to.eql(2));",
+              "console.log('objeto:', j.objectKey);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Estado del upload (GET)",
+      "request": {
+        "method": "GET",
+        "url": "{{base-url}}/v1/uploads/{{uploadId}}",
+        "header": [{ "key": "X-User-Id", "value": "{{user-id}}", "type": "text" }]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "pm.test('→ COMPLETED', () => pm.expect(j.status).to.eql('COMPLETED'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Cancelar upload (aborta multipart en MinIO)",
+      "request": {
+        "method": "DELETE",
+        "url": "{{base-url}}/v1/uploads/{{uploadId}}",
+        "header": [{ "key": "X-User-Id", "value": "{{user-id}}", "type": "text" }]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "pm.test('→ CANCELLED', () => { pm.expect(pm.response.code).to.eql(200); pm.expect(j.status).to.eql('CANCELLED'); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 - Error: contentType no permitido (400)",
+      "request": {
+        "method": "POST",
+        "url": "{{base-url}}/v1/uploads",
+        "header": [{ "key": "X-User-Id", "value": "{{user-id}}", "type": "text" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fileName\": \"nota.txt\",\n  \"contentType\": \"text/plain\",\n  \"size\": 100\n}",
+          "options": { "raw": { "language": "json" } }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "pm.test('→ 400 INVALID_FILE_TYPE', () => { pm.expect(pm.response.code).to.eql(400); pm.expect(j.code).to.eql('INVALID_FILE_TYPE'); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 - Error: archivo demasiado grande (413)",
+      "request": {
+        "method": "POST",
+        "url": "{{base-url}}/v1/uploads",
+        "header": [{ "key": "X-User-Id", "value": "{{user-id}}", "type": "text" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fileName\": \"gigante.mp4\",\n  \"contentType\": \"video/mp4\",\n  \"size\": 6000000000\n}",
+          "options": { "raw": { "language": "json" } }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "pm.test('→ 413 FILE_TOO_LARGE', () => { pm.expect(pm.response.code).to.eql(413); pm.expect(j.code).to.eql('FILE_TOO_LARGE'); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 - Error: parte fuera de rango (400)",
+      "request": {
+        "method": "POST",
+        "url": "{{base-url}}/v1/uploads/{{uploadId}}/parts",
+        "header": [{ "key": "X-User-Id", "value": "{{user-id}}", "type": "text" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"partNumbers\": [99]\n}",
+          "options": { "raw": { "language": "json" } }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "pm.test('→ 400 INVALID_PART', () => { pm.expect(pm.response.code).to.eql(400); pm.expect(j.code).to.eql('INVALID_PART'); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 - Error: otro usuario no puede acceder (403)",
+      "request": {
+        "method": "POST",
+        "url": "{{base-url}}/v1/uploads/{{uploadId}}/parts",
+        "header": [{ "key": "X-User-Id", "value": "{{other-user-id}}", "type": "text" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"partNumbers\": [1]\n}",
+          "options": { "raw": { "language": "json" } }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "pm.test('→ 403 UNAUTHORIZED_UPLOAD', () => { pm.expect(pm.response.code).to.eql(403); pm.expect(j.code).to.eql('UNAUTHORIZED_UPLOAD'); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 - Sin X-User-Id (401, solo sin default-user-id)",
+      "request": {
+        "method": "POST",
+        "url": "{{base-url}}/v1/uploads",
+        "description": "En el perfil local existe 'app.security.default-user-id', por lo que sin header se usa ese usuario y responde 201. Este 401 solo aplica cuando se elimina el default (entornos reales/CI).",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fileName\": \"a.mp4\",\n  \"contentType\": \"video/mp4\",\n  \"size\": 1000\n}",
+          "options": { "raw": { "language": "json" } }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('→ 401', () => pm.expect(pm.response.code).to.eql(401));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+  ]
+}

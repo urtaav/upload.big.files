@@ -1,0 +1,127 @@
+### Upload API - requests de prueba interactivas
+### Abrir con HTTP Client (IntelliJ IDEA) o REST Client (VS Code).
+### La API debe correr en el perfil local antes de ejecutar.
+### Ejecutar los bloques EN ORDEN: 1 -> 2 -> 3 -> 4 -> 5 (complete).
+### Los IDs y URLs se capturan automáticamente entre bloques.
+
+@base = http://localhost:8080/api
+@userId = 00000000-0000-0000-0000-000000000001
+@idempotencyKey = demo-flujo-001
+
+### 1) Crear sesión (25 MiB -> 3 partes de 10 MiB)
+# @name createUpload
+POST {{base}}/v1/uploads
+X-User-Id: {{userId}}
+Idempotency-Key: {{idempotencyKey}}
+Content-Type: application/json
+
+{
+  "fileName": "clip.mp4",
+  "contentType": "video/mp4",
+  "size": 26214400
+}
+
+> {% client.global.set("uploadId", response.body.uploadId); %}
+
+### 1b) Idempotencia: repetir la MISMA petición debe dar 200 con el MISMO uploadId
+POST {{base}}/v1/uploads
+X-User-Id: {{userId}}
+Idempotency-Key: {{idempotencyKey}}
+Content-Type: application/json
+
+{
+  "fileName": "clip.mp4",
+  "contentType": "video/mp4",
+  "size": 26214400
+}
+
+### 2) Pedir presigned URLs de todas las partes (TTL 15 min)
+# @name presignParts
+POST {{base}}/v1/uploads/{{uploadId}}/parts
+X-User-Id: {{userId}}
+Content-Type: application/json
+
+{
+  "partNumbers": [1, 2, 3]
+}
+
+> {%
+  for (const p of response.body.parts) {
+    client.global.set("uploadUrl" + p.partNumber, p.uploadUrl);
+  }
+%}
+
+### 3) Subir cada parte DIRECTAMENTE a MinIO con su URL presignada (no pasa por la API)
+### Cada PUT devuelve un header ETag que hay que registrar en el paso 4.
+# @name uploadPart1
+PUT {{uploadUrl1}}
+
+< @testdata/part1.bin
+
+> {% client.global.set("etag1", response.headers["ETag"]); %}
+
+# @name uploadPart2
+PUT {{uploadUrl2}}
+
+< @testdata/part2.bin
+
+> {% client.global.set("etag2", response.headers["ETag"]); %}
+
+# @name uploadPart3
+PUT {{uploadUrl3}}
+
+< @testdata/part3.bin
+
+> {% client.global.set("etag3", response.headers["ETag"]); %}
+
+### 4) Ack de cada parte
+POST {{base}}/v1/uploads/{{uploadId}}/parts/1/ack
+X-User-Id: {{userId}}
+Content-Type: application/json
+
+{
+  "etag": "{{etag1}}",
+  "size": 10485760
+}
+
+### 5) Completar el upload (una entrada por parte, con su ETag)
+# @name completeUpload
+POST {{base}}/v1/uploads/{{uploadId}}/complete
+X-User-Id: {{userId}}
+Content-Type: application/json
+
+{
+  "parts": [
+    {"partNumber": 1, "etag": "{{etag1}}"},
+    {"partNumber": 2, "etag": "{{etag2}}"},
+    {"partNumber": 3, "etag": "{{etag3}}"}
+  ]
+}
+
+### 6) Estado / partes subidas
+GET {{base}}/v1/uploads/{{uploadId}}
+X-User-Id: {{userId}}
+
+### 7) Cancelar (aborta el multipart en MinIO)
+DELETE {{base}}/v1/uploads/{{uploadId}}
+X-User-Id: {{userId}}
+
+### 8) Error: contentType no permitido (400 INVALID_FILE_TYPE)
+POST {{base}}/v1/uploads
+X-User-Id: {{userId}}
+Content-Type: application/json
+
+{
+  "fileName": "nota.txt",
+  "contentType": "text/plain",
+  "size": 100
+}
+
+### 9) Error: otro usuario no puede acceder (403 UNAUTHORIZED_UPLOAD)
+POST {{base}}/v1/uploads/{{uploadId}}/parts
+X-User-Id: 99999999-9999-9999-9999-999999999999
+Content-Type: application/json
+
+{
+  "partNumbers": [1]
+}
